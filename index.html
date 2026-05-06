@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario de Contingencias - LATAM</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * { box-sizing: border-box; text-transform: uppercase; font-family: "Arial", sans-serif; }
+        
+        body { 
+            background-color: #525659; 
+            margin: 0; 
+            padding: 0;
+        }
+
+        #centrador-principal {
+            display: flex;
+            justify-content: center;
+            align-items: center; 
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .hoja-carta {
+            width: 1056px; 
+            height: 816px; 
+            background: white;
+            padding: 40px 50px; 
+            box-shadow: 0 5px 25px rgba(0,0,0,0.5); 
+            position: relative;
+            overflow: hidden; 
+        }
+
+        .header-logo {
+            margin-bottom: 20px;
+            height: 45px; 
+            width: 150px; /* Ancho explícito para el render del PDF */
+        }
+        
+        .header-logo svg {
+            width: 150px;
+            height: 45px;
+            display: block;
+        }
+
+        .titulo-formulario {
+            border: 1px solid #000;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 10px;
+            margin-bottom: 25px;
+        }
+
+        .fila-datos {
+            display: flex;
+            align-items: flex-end;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+        
+        .grupo-input { display: flex; align-items: flex-end; }
+        .grupo-input.flex-grow { flex-grow: 1; }
+        
+        .etiqueta { font-size: 13px; font-weight: bold; margin-right: 8px; white-space: nowrap; }
+        
+        input[type="text"] {
+            border: none;
+            border-bottom: 1px solid #000;
+            outline: none;
+            font-size: 14px;
+            padding: 2px 5px;
+            background: transparent;
+            text-transform: uppercase;
+            font-weight: normal; 
+        }
+        
+        .input-bp { width: 100px; text-align: center; } 
+        .input-nombre { width: 100%; font-weight: normal; } 
+        .input-fecha { width: 220px; text-align: center; font-weight: normal; } 
+        .input-gerencia { width: 200px; text-align: center; font-weight: bold;}
+        .input-area { width: 250px; text-align: center;}
+
+        .instruccion {
+            font-size: 12px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse; 
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            border: 1px solid #000; 
+            padding: 6px;
+            font-size: 12px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        
+        th { background-color: #fff; font-weight: bold; }
+        
+        input.celda-tabla {
+            width: 100%;
+            border: none;
+            text-align: center;
+            font-size: 13px;
+            padding: 2px 0;
+        }
+        
+        input.input-fecha-tabla { font-size: 10px; font-weight: normal; } 
+        input.celda-tabla:focus { background-color: #f0f8ff; }
+        input.celda-motivo { text-align: left; padding-left: 5px; }
+
+        .seccion-firmas {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 60px;
+            padding: 0 20px;
+        }
+        
+        .bloque-firma {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 250px; 
+        }
+
+        .firma-linea {
+            border-top: 1px solid #000;
+            width: 100%;
+            text-align: center;
+            padding-top: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            line-height: 1.2;
+        }
+
+        .btn-pdf {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: #002d72;
+            color: #fff;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            text-transform: none; 
+            transition: background 0.3s;
+            z-index: 1000; 
+        }
+        .btn-pdf:hover { background-color: #001845; }
+        .btn-pdf:disabled { background-color: #555; cursor: not-allowed; }
+
+        @media print {
+            body { background: none; }
+            .hoja-carta { box-shadow: none; margin: 0; }
+            .no-print { display: none !important; }
+            input { border-bottom: 1px solid transparent !important; } 
+            input.celda-tabla { background-color: transparent !important; }
+            input::placeholder { color: transparent !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="centrador-principal">
+        <div class="hoja-carta" id="contenido-pdf">
+            
+            <div class="header-logo">
+                <svg viewBox="0.13 -0.275 234.736 70.807" xmlns="http://www.w3.org/2000/svg" width="150" height="45"><g fill="none" fill-rule="evenodd"><path d="M228.193 54.161c-4.395 0-7.267 1.82-7.267 4.63 0 2.646 2.196 3.639 5.745 4.3l1.69.33c2.535.496 3.886 1.323 3.886 2.646 0 1.322-1.35 2.316-4.731 2.316-3.041 0-5.408-.994-6.084-1.49l-.677 2.316c.677.33 3.043 1.323 6.591 1.323 4.734 0 7.438-1.82 7.438-4.63 0-2.645-2.367-3.968-6.085-4.63l-1.69-.331c-2.704-.496-3.549-.992-3.549-2.315 0-1.322 1.522-2.314 4.562-2.314 2.536 0 4.395.495 5.24.826l.509-1.984c-1.015-.33-2.875-.993-5.578-.993zM75.596 70.366h2.533l-7.604-15.212c-.337-.497-.676-.662-1.182-.662h-1.859l-7.942 15.874h2.534l2.029-4.133h9.462l2.03 4.133zm31.261 0v-5.787c1.184.66 2.874.992 4.734.992 1.013 0 1.69 0 2.533-.165l3.38 4.96h2.704l-3.718-5.622c2.368-.992 3.887-2.976 3.887-5.291 0-2.976-2.534-5.126-7.097-5.126h-8.956v16.039zm62.866 0V57.304l11.152 12.4c.338.497.845.662 1.52.662h1.523V54.492h-2.367V67.06l-10.985-11.905c-.337-.497-.673-.662-1.519-.662h-1.691v15.874h2.367zm-97.17-6.283h-7.434l3.717-7.44zm39.206-.662c-1.86 0-3.718-.495-4.902-1.157v-5.952h6.592c3.212 0 4.394 1.653 4.394 3.14 0 2.15-1.692 3.97-6.084 3.97zm19.433 6.945h11.83v-2.15h-9.295V54.492h-2.535zm-41.91 0h2.537V54.492h-2.536v15.874zm107.309-15.874v15.874h13.013V68.05h-10.477v-4.96h9.123v-2.15h-9.123v-4.299h10.138v-2.15h-12.674zm-44.275 15.874h2.537V54.492h-2.537zM114.97 37.164h7.874L110.58 13.522c-.643-1.164-1.279-1.608-2.747-1.608h-6.77l-12.905 25.25h7.866l2.29-4.655h14.46l2.195 4.655zm64.528 0h7.778l-12.268-23.642c-.636-1.164-1.276-1.608-2.739-1.608h-6.773l-12.906 25.25h7.871l2.287-4.655h14.462zm27.728-6.177c.279.895 1.375 1.522 2.565 1.522h7.414l5.491-14.86 5.215 19.515h6.955l-5.764-22.383c-.543-2.239-1.829-2.867-3.933-2.867h-7.232l-5.214 14.777-4.122-12.543c-.545-1.606-1.557-2.234-3.203-2.234h-8.143l-6.684 25.25h7.052l5.118-19.515zm-32.574-3.584h-9.615l4.856-10.117zm-64.44 0h-9.608l4.854-10.117 4.755 10.117zm-27.545 9.761l2.927-5.822h-17.3V11.914h-7.412v25.25zm51.437 0h7.133v-19.43l12.453-.806v-5.014h-32.036v5.014l12.45.805zM10.655 62.807l6.316-2.249c1.316-.468 1.316.568 1.316 2.113v2.844c0 2.3-.79 2.58-1.842 2.955l-5.79 2.062zm0-12.616l16.053-5.717c1.315-.468 1.315.567 1.315 2.112v2.832c0 2.312-.79 2.593-1.842 2.968l-15.526 5.53V50.19M9.34 32.214l-8.158-2.905C.13 28.934.13 27.533.13 27.019c0 0 0 1.688 1.578 1.126L41.707 13.9c3.158-1.125 3.158-1.992 1.842-2.46 1.316.468 1.316.468 1.316 4.25 0 3.604 0 4.81-1.579 5.372L11.971 32.214c-1.316.469-1.316.469-2.631 0" fill="#1b0088"/><path d="M3.55 17.536l13.974 4.976 10.845-3.862L2.235 9.343C.393 8.687.13 8.593.13 9.881v3.347c0 3.09 2.368 3.933 3.42 4.308m40 6.52l-4.336-1.544-10.845 3.862 6.868 2.446 6.47-2.304c3.158-1.124 3.158-1.991 1.842-2.46" fill="#ed1650"/><path d="M43.55 24.056c1.315.469 1.315 1.336-1.843 2.46L10.655 37.575v7.724l32.631-11.62c1.579-.563 1.579-1.769 1.579-5.374 0-3.78 0-3.78-1.316-4.249" fill="#1b0088"/><path d="M43.55 11.44L12.76.475c-1.841-.656-2.105-.75-2.105.538V4.36c0 3.09 2.368 3.933 3.42 4.308l21.162 7.536 6.47-2.304c3.158-1.125 3.158-1.992 1.842-2.46M1.708 28.145l8.948-3.187-8.421-2.999C.393 21.303.13 21.21.13 22.497v4.521s0 1.689 1.578 1.127" fill="#ed1650"/></g></svg>
+            </div>
+
+            <div class="titulo-formulario">
+                FORMULARIO DE SOLICITUD DE HHEE O CONTINGENCIAS
+            </div>
+
+            <div class="fila-datos">
+                <div class="grupo-input">
+                    <span class="etiqueta">BP</span>
+                    <input type="text" class="input-bp" id="input-bp" maxlength="8">
+                </div>
+                <div class="grupo-input flex-grow">
+                    <span class="etiqueta">NOMBRE</span>
+                    <input type="text" class="input-nombre" id="input-nombre">
+                </div>
+                <div class="grupo-input">
+                    <span class="etiqueta">FECHA</span>
+                    <input type="text" class="input-fecha" id="fecha-cabecera" placeholder="DDMMAAAA" onblur="formatearFechaTexto(this)">
+                </div>
+            </div>
+
+            <div class="fila-datos">
+                <div class="grupo-input">
+                    <span class="etiqueta">GERENCIA</span>
+                    <input type="text" class="input-gerencia" value="MANTTO LÍNEA">
+                </div>
+                <div class="grupo-input" style="margin-left: 20px;">
+                    <span class="etiqueta">ÁREA</span>
+                    <input type="text" class="input-area">
+                </div>
+            </div>
+
+            <div class="instruccion">
+                SE AUTORIZA A TRABAJAR HORAS EXTRAS U HORAS POR CONTINGENCIA COMO SE INDICA A CONTINUACION:
+            </div>
+
+            <table id="tabla-contingencias">
+                <colgroup>
+                    <col style="width: 4%;">  
+                    <col style="width: 17%;"> 
+                    <col style="width: 9%;"> 
+                    <col style="width: 9%;"> 
+                    <col style="width: 10%;"> 
+                    <col style="width: 51%;"> 
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="border: none;"></th>
+                        <th rowspan="2">FECHA</th>
+                        <th colspan="3">HORAS</th>
+                        <th rowspan="2">MOTIVO</th>
+                    </tr>
+                    <tr>
+                        <th>DESDE</th>
+                        <th>HASTA</th>
+                        <th>TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <script>
+                        for(let i=1; i<=7; i++) {
+                            document.write(`
+                            <tr class="fila-calc">
+                                <td style="font-weight:bold; border:none; text-align:right; padding-right:8px;">${i})</td>
+                                <td><input type="text" class="celda-tabla input-fecha-tabla" placeholder="DDMMAAAA" onblur="formatearFechaTexto(this)"></td>
+                                <td><input type="text" class="celda-tabla hora-desde" placeholder="00:00" maxlength="5" oninput="formatearHora(this)" onblur="completarHora(this)"></td>
+                                <td><input type="text" class="celda-tabla hora-hasta" placeholder="00:00" maxlength="5" oninput="formatearHora(this)" onblur="completarHora(this)"></td>
+                                <td><input type="text" class="celda-tabla hora-total" readonly style="font-weight:normal;"></td>
+                                <td><input type="text" class="celda-tabla celda-motivo"></td>
+                            </tr>
+                            `);
+                        }
+                    </script>
+                    
+                    <tr class="total-row">
+                        <td style="border:none;"></td>
+                        <td colspan="3" style="text-align:right; font-weight:bold; border:none;">TOTAL:</td>
+                        <td style="border: 1px solid #000;"><input type="text" id="gran-total" class="celda-tabla" readonly style="font-weight:normal;"></td>
+                        <td style="border:none;"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="seccion-firmas">
+                <div class="bloque-firma">
+                    <div class="firma-linea">SUPERVISOR</div>
+                </div>
+
+                <div class="bloque-firma">
+                    <div class="firma-linea" id="firma-dinamica">_________________</div>
+                </div>
+
+                <div class="bloque-firma">
+                    <div class="firma-linea">SUBGERENTE O JEFE DE ÁREA</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <button class="btn-pdf no-print" onclick="generarPDF()">Descargar PDF (Carta)</button>
+
+    <script>
+        const nombresMeses = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+
+        function formatearFechaTexto(input) {
+            let valor = input.value.replace(/\D/g, ''); 
+            let dia, mes, anio;
+
+            if (valor.length === 4) {
+                dia = valor.substring(0, 2);
+                mes = parseInt(valor.substring(2, 4), 10);
+                anio = new Date().getFullYear().toString();
+            } else if (valor.length === 6) {
+                dia = valor.substring(0, 2);
+                mes = parseInt(valor.substring(2, 4), 10);
+                anio = "20" + valor.substring(4, 6);
+            } else if (valor.length === 8) {
+                dia = valor.substring(0, 2);
+                mes = parseInt(valor.substring(2, 4), 10);
+                anio = valor.substring(4, 8);
+            } else {
+                return;
+            }
+            
+            if (mes >= 1 && mes <= 12) {
+                input.value = `${dia} DE ${nombresMeses[mes - 1]} DE ${anio}`;
+            }
+        }
+
+        const inputNombre = document.getElementById('input-nombre');
+        const inputBp = document.getElementById('input-bp');
+        const firmaDinamica = document.getElementById('firma-dinamica');
+
+        function reflejarFirma() {
+            const nombre = inputNombre.value.trim().toUpperCase();
+            const bp = inputBp.value.trim().toUpperCase();
+            
+            if (nombre !== "" || bp !== "") {
+                firmaDinamica.innerHTML = (nombre !== "" ? nombre : "") + (bp !== "" ? "<br>BP: " + bp : "");
+            } else {
+                firmaDinamica.innerHTML = "_________________";
+            }
+        }
+
+        inputNombre.addEventListener('input', reflejarFirma);
+        inputBp.addEventListener('input', reflejarFirma);
+
+        window.onload = function() {
+            const hoy = new Date();
+            const dd = String(hoy.getDate()).padStart(2, '0');
+            const mmIndex = hoy.getMonth();
+            const yyyy = hoy.getFullYear();
+            
+            document.getElementById('fecha-cabecera').value = `${dd} DE ${nombresMeses[mmIndex]} DE ${yyyy}`;
+        };
+
+        function formatearHora(input) {
+            let valor = input.value.replace(/\D/g, ''); 
+            if (valor.length > 2) {
+                valor = valor.slice(0, 2) + ':' + valor.slice(2, 4);
+            }
+            input.value = valor;
+            
+            if(valor.length === 5) {
+                calcularTotales();
+            } else {
+                input.closest('tr').querySelector('.hora-total').value = "";
+                calcularTotales();
+            }
+        }
+
+        function completarHora(input) {
+            let valor = input.value.replace(/\D/g, '');
+            if (valor.length > 0 && valor.length <= 2) {
+                input.value = valor.padStart(2, '0') + ':00';
+                calcularTotales();
+            }
+        }
+
+        function calcularTotales() {
+            const filas = document.querySelectorAll('.fila-calc');
+            let granTotalMinutos = 0;
+
+            filas.forEach(fila => {
+                const desdeStr = fila.querySelector('.hora-desde').value;
+                const hastaStr = fila.querySelector('.hora-hasta').value;
+                const totalInput = fila.querySelector('.hora-total');
+
+                if (desdeStr.length === 5 && hastaStr.length === 5) {
+                    let [dh, dm] = desdeStr.split(':').map(Number);
+                    let [hh, hm] = hastaStr.split(':').map(Number);
+
+                    if(dh < 24 && hh < 24 && dm < 60 && hm < 60) {
+                        let minDesde = dh * 60 + dm;
+                        let minHasta = hh * 60 + hm;
+
+                        if (minHasta < minDesde) {
+                            minHasta += 24 * 60; 
+                        }
+
+                        let diff = minHasta - minDesde;
+                        granTotalMinutos += diff;
+
+                        let resH = Math.floor(diff / 60);
+                        let resM = diff % 60;
+                        totalInput.value = resH.toString().padStart(2, '0') + ':' + resM.toString().padStart(2, '0');
+                    } else {
+                        totalInput.value = "ERR"; 
+                    }
+                }
+            });
+
+            const granTotalInput = document.getElementById('gran-total');
+            if(granTotalMinutos > 0) {
+                let gH = Math.floor(granTotalMinutos / 60);
+                let gM = granTotalMinutos % 60;
+                granTotalInput.value = gH.toString().padStart(2, '0') + ':' + gM.toString().padStart(2, '0');
+            } else {
+                granTotalInput.value = "";
+            }
+        }
+
+        function generarPDF() {
+            // --- INICIO DE VALIDACIÓN OBLIGATORIA AÑADIDA ---
+            const nombre = document.getElementById('input-nombre').value.trim();
+            const bp = document.getElementById('input-bp').value.trim();
+            const area = document.querySelector('.input-area').value.trim();
+
+            if (nombre === "") {
+                alert("Por favor, ingrese el NOMBRE de forma obligatoria.");
+                return;
+            }
+
+            if (bp === "" || !/^\d+$/.test(bp)) {
+                alert("Por favor, ingrese un BP válido (SOLO NÚMEROS).");
+                return;
+            }
+
+            if (area === "") {
+                alert("Por favor, ingrese el ÁREA de forma obligatoria.");
+                return;
+            }
+
+            const filas = document.querySelectorAll('.fila-calc');
+            let hayFilasCompletas = false;
+
+            for (let i = 0; i < filas.length; i++) {
+                const fila = filas[i];
+                const fecha = fila.querySelector('.input-fecha-tabla').value.trim();
+                const desde = fila.querySelector('.hora-desde').value.trim();
+                const hasta = fila.querySelector('.hora-hasta').value.trim();
+                const motivo = fila.querySelector('.celda-motivo').value.trim();
+
+                // Verificar si el usuario escribió al menos algo en esta fila
+                const tieneAlgunDato = fecha !== "" || desde !== "" || hasta !== "" || motivo !== "";
+
+                if (tieneAlgunDato) {
+                    // Si empezó a llenar la fila, es obligatorio que complete fecha, desde y hasta
+                    if (fecha === "" || desde === "" || hasta === "") {
+                        alert(`La Fila ${i + 1} está incompleta. Si utiliza una fila, es obligatorio llenar FECHA, HORA DESDE y HORA HASTA.`);
+                        return; // Se cancela la generación del PDF
+                    }
+                    hayFilasCompletas = true;
+                }
+            }
+
+            if (!hayFilasCompletas) {
+                alert("Por favor, complete al menos UNA FILA de contingencia con su FECHA, HORA DESDE y HORA HASTA.");
+                return;
+            }
+            // --- FIN DE VALIDACIÓN OBLIGATORIA AÑADIDA ---
+
+
+            if (typeof html2pdf === 'undefined') {
+                alert("ERROR: No se encontró el motor de PDF.");
+                return;
+            }
+
+            const btn = document.querySelector('.btn-pdf');
+            const textoOriginal = btn.innerText;
+            
+            btn.innerText = "PROCESANDO...";
+            btn.disabled = true;
+
+            document.querySelectorAll('input').forEach(input => {
+                input.value = input.value.toUpperCase();
+                input.setAttribute('value', input.value);
+                
+                if (input.hasAttribute('placeholder')) {
+                    input.setAttribute('data-placeholder', input.getAttribute('placeholder'));
+                    input.removeAttribute('placeholder');
+                }
+            });
+
+            const centrador = document.getElementById('centrador-principal');
+            centrador.style.display = 'block';
+            centrador.style.padding = '0';
+            window.scrollTo(0,0);
+
+            const elemento = document.getElementById('contenido-pdf');
+            
+            const opciones = {
+                margin:       0, 
+                filename:     'Formulario_Contingencias.pdf',
+                image:        { type: 'jpeg', quality: 1 }, 
+                html2canvas:  { scale: 2, scrollY: 0, scrollX: 0 }, 
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+            };
+
+            html2pdf().set(opciones).from(elemento).save().then(() => {
+                centrador.style.display = 'flex';
+                centrador.style.padding = '20px';
+                btn.innerText = textoOriginal;
+                btn.disabled = false;
+                
+                document.querySelectorAll('input').forEach(input => {
+                    if (input.hasAttribute('data-placeholder')) {
+                        input.setAttribute('placeholder', input.getAttribute('data-placeholder'));
+                        input.removeAttribute('data-placeholder');
+                    }
+                });
+            }).catch(err => {
+                console.error("Fallo al generar el PDF:", err);
+                centrador.style.display = 'flex';
+                centrador.style.padding = '20px';
+                btn.innerText = textoOriginal;
+                btn.disabled = false;
+                
+                document.querySelectorAll('input').forEach(input => {
+                    if (input.hasAttribute('data-placeholder')) {
+                        input.setAttribute('placeholder', input.getAttribute('data-placeholder'));
+                        input.removeAttribute('data-placeholder');
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>
