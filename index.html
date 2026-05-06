@@ -128,6 +128,7 @@
             flex-direction: column;
             align-items: center;
             width: 250px; 
+            position: relative; /* Añadido para mejor posicionamiento de la firma */
         }
 
         .firma-linea {
@@ -180,6 +181,21 @@
             z-index: 1000; 
         }
         .btn-limpiar:hover { background-color: #800000; }
+
+        /* Estilos botón borrar firma local */
+        .btn-limpiar-firma {
+            background-color: #eee;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 2px 5px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            text-transform: none;
+        }
+        .btn-limpiar-firma:hover {
+            background-color: #ddd;
+        }
 
         @media print {
             body { background: none; }
@@ -283,15 +299,17 @@
 
             <div class="seccion-firmas">
                 <div class="bloque-firma">
-                    <div class="firma-linea">SUPERVISOR</div>
+                    <div class="firma-linea" style="margin-top: 80px;">SUPERVISOR</div>
                 </div>
 
                 <div class="bloque-firma">
+                    <canvas id="canvas-firma" width="250" height="75" style="border: 1px dashed #aaa; border-radius: 4px; cursor: crosshair; background: transparent;"></canvas>
+                    <button class="no-print btn-limpiar-firma" onclick="limpiarCanvasFirma()">Borrar Firma</button>
                     <div class="firma-linea" id="firma-dinamica">_________________</div>
                 </div>
 
                 <div class="bloque-firma">
-                    <div class="firma-linea">SUBGERENTE O JEFE DE ÁREA</div>
+                    <div class="firma-linea" style="margin-top: 80px;">SUBGERENTE O JEFE DE ÁREA</div>
                 </div>
             </div>
 
@@ -304,7 +322,71 @@
     <script>
         const nombresMeses = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
 
-        // NUEVO: Funciones para guardar y cargar localmente
+        // --- LÓGICA PAD DE FIRMA ---
+        const canvasFirma = document.getElementById('canvas-firma');
+        const ctxFirma = canvasFirma.getContext('2d');
+        let dibujandoFirma = false;
+
+        ctxFirma.lineWidth = 2;
+        ctxFirma.strokeStyle = '#000000';
+        ctxFirma.lineJoin = 'round';
+        ctxFirma.lineCap = 'round';
+
+        function obtenerPosicionCanvas(e) {
+            const rect = canvasFirma.getBoundingClientRect();
+            if (e.touches && e.touches.length > 0) {
+                return {
+                    x: e.touches[0].clientX - rect.left,
+                    y: e.touches[0].clientY - rect.top
+                };
+            }
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        function iniciarDibujo(e) {
+            e.preventDefault();
+            dibujandoFirma = true;
+            const pos = obtenerPosicionCanvas(e);
+            ctxFirma.beginPath();
+            ctxFirma.moveTo(pos.x, pos.y);
+        }
+
+        function dibujarFirma(e) {
+            if (!dibujandoFirma) return;
+            e.preventDefault();
+            const pos = obtenerPosicionCanvas(e);
+            ctxFirma.lineTo(pos.x, pos.y);
+            ctxFirma.stroke();
+        }
+
+        function detenerDibujo() {
+            if (dibujandoFirma) {
+                dibujandoFirma = false;
+                ctxFirma.closePath();
+                guardarDatosLocalmente(); // Guardar canvas después de trazar
+            }
+        }
+
+        canvasFirma.addEventListener('mousedown', iniciarDibujo);
+        canvasFirma.addEventListener('mousemove', dibujarFirma);
+        canvasFirma.addEventListener('mouseup', detenerDibujo);
+        canvasFirma.addEventListener('mouseout', detenerDibujo);
+
+        canvasFirma.addEventListener('touchstart', iniciarDibujo, {passive: false});
+        canvasFirma.addEventListener('touchmove', dibujarFirma, {passive: false});
+        canvasFirma.addEventListener('touchend', detenerDibujo);
+
+        function limpiarCanvasFirma() {
+            ctxFirma.clearRect(0, 0, canvasFirma.width, canvasFirma.height);
+            guardarDatosLocalmente();
+        }
+        // --- FIN LÓGICA PAD DE FIRMA ---
+
+
+        // NUEVO: Funciones para guardar y cargar localmente (Modificadas para incluir la firma)
         function guardarDatosLocalmente() {
             const inputs = document.querySelectorAll('input');
             const datos = [];
@@ -313,7 +395,8 @@
             });
             const guardado = {
                 timestamp: new Date().getTime(),
-                datos: datos
+                datos: datos,
+                firma: canvasFirma.toDataURL() // Guardamos la firma
             };
             localStorage.setItem('formContingenciasLatam', JSON.stringify(guardado));
         }
@@ -332,6 +415,16 @@
                             input.value = guardado.datos[index];
                         }
                     });
+                    
+                    // Cargar firma guardada
+                    if (guardado.firma) {
+                        const img = new Image();
+                        img.onload = function() {
+                            ctxFirma.drawImage(img, 0, 0);
+                        };
+                        img.src = guardado.firma;
+                    }
+
                     reflejarFirma();
                     calcularTotales();
                 } else {
@@ -355,6 +448,7 @@
                 const yyyy = hoy.getFullYear();
                 document.getElementById('fecha-cabecera').value = `${dd} DE ${nombresMeses[mmIndex]} DE ${yyyy}`;
                 
+                limpiarCanvasFirma(); // Borramos también la firma
                 reflejarFirma();
                 calcularTotales();
                 localStorage.removeItem('formContingenciasLatam');
@@ -586,14 +680,12 @@
                 const hasta = fila.querySelector('.hora-hasta').value.trim();
                 const motivo = fila.querySelector('.celda-motivo').value.trim();
 
-                // Verificar si el usuario escribió al menos algo en esta fila
                 const tieneAlgunDato = fecha !== "" || desde !== "" || hasta !== "" || motivo !== "";
 
                 if (tieneAlgunDato) {
-                    // Si empezó a llenar la fila, es obligatorio que complete fecha, desde y hasta
                     if (fecha === "" || desde === "" || hasta === "") {
                         alert(`La Fila ${i + 1} está incompleta. Si utiliza una fila, es obligatorio llenar FECHA, HORA DESDE y HORA HASTA.`);
-                        return; // Se cancela la generación del PDF
+                        return; 
                     }
                     hayFilasCompletas = true;
                 }
@@ -627,6 +719,10 @@
                 }
             });
 
+            // Ocultar borde del canvas para que no salga punteado en el PDF
+            const bordeCanvasOriginal = canvasFirma.style.border;
+            canvasFirma.style.border = 'none';
+
             const centrador = document.getElementById('centrador-principal');
             centrador.style.display = 'block';
             centrador.style.padding = '0';
@@ -647,6 +743,7 @@
                 centrador.style.padding = '20px';
                 btn.innerText = textoOriginal;
                 btn.disabled = false;
+                canvasFirma.style.border = bordeCanvasOriginal; // Restauramos borde canvas
                 
                 document.querySelectorAll('input').forEach(input => {
                     if (input.hasAttribute('data-placeholder')) {
@@ -660,6 +757,7 @@
                 centrador.style.padding = '20px';
                 btn.innerText = textoOriginal;
                 btn.disabled = false;
+                canvasFirma.style.border = bordeCanvasOriginal; // Restauramos borde canvas
                 
                 document.querySelectorAll('input').forEach(input => {
                     if (input.hasAttribute('data-placeholder')) {
