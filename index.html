@@ -193,44 +193,41 @@
             line-height: 1.2;
         }
 
-        .btn-pdf {
+        /* ----- NUEVO CONTENEDOR FLOTANTE PARA BOTONES PRINCIPALES ----- */
+        .contenedor-botones {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background-color: #002d72;
-            color: #fff;
-            border: none;
-            padding: 15px 25px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-            text-transform: none; 
-            transition: background 0.3s;
-            z-index: 1000; 
+            bottom: 25px;
+            right: 25px;
+            display: flex;
+            gap: 12px;
+            z-index: 1000;
+            opacity: 0.5; /* Semi-transparente para no molestar */
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
-        .btn-pdf:hover { background-color: #001845; }
-        .btn-pdf:disabled { background-color: #555; cursor: not-allowed; }
 
-        .btn-limpiar {
-            position: fixed;
-            bottom: 30px;
-            left: 30px;
-            background-color: #b30000;
+        .contenedor-botones:hover, .contenedor-botones:focus-within {
+            opacity: 1; /* Vuelve a ser 100% visible al pasar el mouse o tocar */
+        }
+
+        .btn-pdf, .btn-limpiar {
             color: #fff;
             border: none;
-            padding: 15px 25px;
-            border-radius: 8px;
-            font-size: 14px;
+            padding: 12px 20px;
+            border-radius: 30px; /* Estilo píldora, más amigable */
+            font-size: 13px;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             text-transform: none; 
-            transition: background 0.3s;
-            z-index: 1000; 
+            transition: background 0.3s, transform 0.2s;
         }
-        .btn-limpiar:hover { background-color: #800000; }
+
+        .btn-pdf { background-color: #002d72; }
+        .btn-pdf:hover { background-color: #001845; transform: translateY(-3px); }
+        .btn-pdf:disabled { background-color: #555; cursor: not-allowed; transform: none; }
+
+        .btn-limpiar { background-color: #b30000; }
+        .btn-limpiar:hover { background-color: #800000; transform: translateY(-3px); }
 
         @media print {
             body { background: none; }
@@ -357,8 +354,10 @@
         </div>
     </div>
 
-    <button class="btn-limpiar no-print" onclick="limpiarFormulario()">Limpiar Formulario</button>
-    <button class="btn-pdf no-print" onclick="generarPDF()">Descargar PDF</button>
+    <div class="contenedor-botones no-print">
+        <button class="btn-limpiar" onclick="limpiarFormulario()">Limpiar Formulario</button>
+        <button class="btn-pdf" onclick="generarPDF()">Descargar PDF</button>
+    </div>
 
     <script>
         const nombresMeses = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
@@ -773,7 +772,6 @@
             btn.innerText = "PROCESANDO...";
             btn.disabled = true;
 
-            // NUEVO: Ocultamos los botones de firma a la fuerza por JavaScript
             const botonesFirma = document.getElementById('caja-botones-firma');
             botonesFirma.style.display = 'none';
 
@@ -808,7 +806,6 @@
                 btn.innerText = textoOriginal;
                 btn.disabled = false;
                 
-                // Restaurar los botones de firma
                 botonesFirma.style.display = 'flex';
                 
                 document.querySelectorAll('input').forEach(input => {
@@ -824,7 +821,6 @@
                 btn.innerText = textoOriginal;
                 btn.disabled = false;
                 
-                // Restaurar los botones de firma por si ocurre un error
                 botonesFirma.style.display = 'flex';
                 
                 document.querySelectorAll('input').forEach(input => {
@@ -834,29 +830,6 @@
                     }
                 });
             });
-        }
-
-        if (window.visualViewport) {
-            const btnPdf = document.querySelector('.btn-pdf');
-            const btnLimpiar = document.querySelector('.btn-limpiar'); 
-            function reposicionarBotones() {
-                btnPdf.style.position = 'absolute';
-                btnPdf.style.bottom = 'auto';
-                btnPdf.style.right = 'auto';
-                btnPdf.style.left = (window.visualViewport.pageLeft + window.visualViewport.width - btnPdf.offsetWidth - 30) + 'px';
-                btnPdf.style.top = (window.visualViewport.pageTop + window.visualViewport.height - btnPdf.offsetHeight - 30) + 'px';
-                
-                if(btnLimpiar) {
-                    btnLimpiar.style.position = 'absolute';
-                    btnLimpiar.style.bottom = 'auto';
-                    btnLimpiar.style.left = 'auto';
-                    btnLimpiar.style.left = (window.visualViewport.pageLeft + 30) + 'px';
-                    btnLimpiar.style.top = (window.visualViewport.pageTop + window.visualViewport.height - btnLimpiar.offsetHeight - 30) + 'px';
-                }
-            }
-            window.visualViewport.addEventListener('resize', reposicionarBotones);
-            window.visualViewport.addEventListener('scroll', reposicionarBotones);
-            setTimeout(reposicionarBotones, 100); 
         }
     </script>
 </body>
