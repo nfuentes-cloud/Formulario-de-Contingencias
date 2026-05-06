@@ -181,35 +181,6 @@
         }
         .btn-limpiar:hover { background-color: #800000; }
 
-        /* --- NUEVO: ESTILOS PARA FIRMA DIGITAL --- */
-        #canvas-firma {
-            position: absolute;
-            bottom: -30px; 
-            left: 50%;
-            transform: translateX(-50%);
-            cursor: crosshair;
-            z-index: 10;
-        }
-        
-        .btn-borrar-firma {
-            background-color: #666;
-            color: #fff;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 5px;
-            font-size: 11px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-            position: relative;
-            z-index: 20;
-            transition: background 0.3s;
-        }
-        .btn-borrar-firma:hover {
-            background-color: #444;
-        }
-        /* --- FIN ESTILOS FIRMA DIGITAL --- */
-
         @media print {
             body { background: none; }
             .hoja-carta { box-shadow: none; margin: 0; }
@@ -315,11 +286,10 @@
                     <div class="firma-linea">SUPERVISOR</div>
                 </div>
 
-                <div class="bloque-firma" style="position: relative;">
-                    <canvas id="canvas-firma" width="500" height="180"></canvas>
-                    <div class="firma-linea" id="firma-dinamica" style="position: relative; z-index: 11; pointer-events: none;">_________________</div>
-                    <button class="btn-borrar-firma no-print" onclick="limpiarFirma()">BORRAR FIRMA</button>
+                <div class="bloque-firma">
+                    <div class="firma-linea" id="firma-dinamica">_________________</div>
                 </div>
+
                 <div class="bloque-firma">
                     <div class="firma-linea">SUBGERENTE O JEFE DE ÁREA</div>
                 </div>
@@ -388,7 +358,6 @@
                 reflejarFirma();
                 calcularTotales();
                 localStorage.removeItem('formContingenciasLatam');
-                limpiarFirma(); // También limpiamos la firma digital
             }
         }
 
@@ -726,71 +695,6 @@
             window.visualViewport.addEventListener('scroll', reposicionarBotones);
             setTimeout(reposicionarBotones, 100); 
         }
-
-        // --- NUEVO: LÓGICA DE FIRMA DIGITAL ---
-        const canvasFirma = document.getElementById('canvas-firma');
-        const ctxFirma = canvasFirma.getContext('2d');
-        let isDrawing = false;
-
-        // Estilos del trazo del lápiz
-        ctxFirma.lineWidth = 2.5;
-        ctxFirma.lineCap = 'round';
-        ctxFirma.lineJoin = 'round';
-        ctxFirma.strokeStyle = '#000000';
-
-        function getCanvasPos(e) {
-            const rect = canvasFirma.getBoundingClientRect();
-            const clientX = e.clientX !== undefined ? e.clientX : e.touches[0].clientX;
-            const clientY = e.clientY !== undefined ? e.clientY : e.touches[0].clientY;
-            
-            // Calculamos la proporción para que encaje aunque el contenedor se redimensione
-            const scaleX = canvasFirma.width / rect.width;
-            const scaleY = canvasFirma.height / rect.height;
-
-            return {
-                x: (clientX - rect.left) * scaleX,
-                y: (clientY - rect.top) * scaleY
-            };
-        }
-
-        function startDrawing(e) {
-            e.preventDefault();
-            isDrawing = true;
-            const pos = getCanvasPos(e);
-            ctxFirma.beginPath();
-            ctxFirma.moveTo(pos.x, pos.y);
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            e.preventDefault();
-            const pos = getCanvasPos(e);
-            ctxFirma.lineTo(pos.x, pos.y);
-            ctxFirma.stroke();
-        }
-
-        function stopDrawing() {
-            if (isDrawing) {
-                ctxFirma.closePath();
-                isDrawing = false;
-            }
-        }
-
-        // Eventos para el MOUSE
-        canvasFirma.addEventListener('mousedown', startDrawing);
-        canvasFirma.addEventListener('mousemove', draw);
-        canvasFirma.addEventListener('mouseup', stopDrawing);
-        canvasFirma.addEventListener('mouseout', stopDrawing);
-
-        // Eventos para TOUCH (celulares/tablets)
-        canvasFirma.addEventListener('touchstart', startDrawing, { passive: false });
-        canvasFirma.addEventListener('touchmove', draw, { passive: false });
-        canvasFirma.addEventListener('touchend', stopDrawing);
-
-        function limpiarFirma() {
-            ctxFirma.clearRect(0, 0, canvasFirma.width, canvasFirma.height);
-        }
-        // --- FIN LÓGICA DE FIRMA DIGITAL ---
     </script>
 </body>
 </html>
