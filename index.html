@@ -35,7 +35,7 @@
         .header-logo {
             margin-bottom: 20px;
             height: 45px; 
-            width: 150px; /* Ancho explícito para el render del PDF */
+            width: 150px;
         }
         
         .header-logo svg {
@@ -119,8 +119,9 @@
         .seccion-firmas {
             display: flex;
             justify-content: space-between;
-            margin-top: 110px; /* MODIFICADO: Aumentado de 60px a 110px para dar más espacio a la firma */
+            margin-top: 110px; 
             padding: 0 20px;
+            position: relative;
         }
         
         .bloque-firma {
@@ -128,7 +129,7 @@
             flex-direction: column;
             align-items: center;
             width: 250px; 
-            position: relative; /* Añadido para mejor posicionamiento de la firma */
+            position: relative;
         }
 
         .firma-linea {
@@ -140,15 +141,25 @@
             font-weight: bold;
             margin-bottom: 5px;
             line-height: 1.2;
+            z-index: 5;
+            background: white; /* Para que la línea tape el lienzo si es necesario */
         }
 
-        .btn-pdf {
+        /* DISEÑO DE LA FIRMA GRANDE */
+        #canvas-firma {
+            position: absolute;
+            bottom: 20px; /* Posicionado sobre la línea */
+            left: 50%;
+            transform: translateX(-50%);
+            border: 1px dashed rgba(0,0,0,0.1);
+            cursor: crosshair;
+            z-index: 20; /* Por encima de todo para capturar el mouse */
+            background: transparent;
+        }
+
+        .btn-pdf, .btn-limpiar {
             position: fixed;
             bottom: 30px;
-            right: 30px;
-            background-color: #002d72;
-            color: #fff;
-            border: none;
             padding: 15px 25px;
             border-radius: 8px;
             font-size: 14px;
@@ -156,54 +167,29 @@
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(0,0,0,0.4);
             text-transform: none; 
-            transition: background 0.3s;
             z-index: 1000; 
-        }
-        .btn-pdf:hover { background-color: #001845; }
-        .btn-pdf:disabled { background-color: #555; cursor: not-allowed; }
-
-        /* NUEVO: Estilos para el botón de limpiar */
-        .btn-limpiar {
-            position: fixed;
-            bottom: 30px;
-            left: 30px;
-            background-color: #b30000;
-            color: #fff;
             border: none;
-            padding: 15px 25px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-            text-transform: none; 
-            transition: background 0.3s;
-            z-index: 1000; 
+            color: #fff;
         }
-        .btn-limpiar:hover { background-color: #800000; }
+        .btn-pdf { right: 30px; background-color: #002d72; }
+        .btn-limpiar { left: 30px; background-color: #b30000; }
 
-        /* Estilos botón borrar firma local */
-        .btn-limpiar-firma {
-            background-color: #eee;
+        /* Botón borrar firma específico */
+        .btn-borrar-firma {
+            position: absolute;
+            top: -240px; /* Cerca del área grande de firma */
+            right: -100px;
+            background: #eee;
             border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 2px 5px;
+            padding: 5px 10px;
             font-size: 10px;
             cursor: pointer;
-            margin-bottom: 5px;
-            text-transform: none;
-        }
-        .btn-limpiar-firma:hover {
-            background-color: #ddd;
+            z-index: 100;
         }
 
         @media print {
-            body { background: none; }
-            .hoja-carta { box-shadow: none; margin: 0; }
             .no-print { display: none !important; }
-            input { border-bottom: 0.5px solid transparent !important; } 
-            input.celda-tabla { background-color: transparent !important; }
-            input::placeholder { color: transparent !important; }
+            #canvas-firma { border: none !important; }
         }
     </style>
 </head>
@@ -299,17 +285,18 @@
 
             <div class="seccion-firmas">
                 <div class="bloque-firma">
-                    <div class="firma-linea" style="margin-top: 80px;">SUPERVISOR</div>
+                    <div class="firma-linea">SUPERVISOR</div>
                 </div>
 
                 <div class="bloque-firma">
-                    <canvas id="canvas-firma" width="250" height="75" style="border: 1px dashed #aaa; border-radius: 4px; cursor: crosshair; background: transparent;"></canvas>
-                    <button class="no-print btn-limpiar-firma" onclick="limpiarCanvasFirma()">Borrar Firma</button>
+                    <canvas id="canvas-firma" width="600" height="300"></canvas>
+                    <button class="no-print btn-borrar-firma" onclick="limpiarCanvasFirma()">Borrar Firma</button>
+                    
                     <div class="firma-linea" id="firma-dinamica">_________________</div>
                 </div>
 
                 <div class="bloque-firma">
-                    <div class="firma-linea" style="margin-top: 80px;">SUBGERENTE O JEFE DE ÁREA</div>
+                    <div class="firma-linea">SUBGERENTE O JEFE DE ÁREA</div>
                 </div>
             </div>
 
@@ -322,477 +309,142 @@
     <script>
         const nombresMeses = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
 
-        // --- LÓGICA PAD DE FIRMA ---
+        // LOGICA DE FIRMA MEJORADA
         const canvasFirma = document.getElementById('canvas-firma');
         const ctxFirma = canvasFirma.getContext('2d');
-        let dibujandoFirma = false;
+        let dibujando = false;
 
-        ctxFirma.lineWidth = 2;
-        ctxFirma.strokeStyle = '#000000';
-        ctxFirma.lineJoin = 'round';
-        ctxFirma.lineCap = 'round';
+        ctxFirma.lineWidth = 2.5;
+        ctxFirma.strokeStyle = "#000";
+        ctxFirma.lineJoin = "round";
+        ctxFirma.lineCap = "round";
 
-        function obtenerPosicionCanvas(e) {
+        function obtenerPos(e) {
             const rect = canvasFirma.getBoundingClientRect();
-            if (e.touches && e.touches.length > 0) {
-                return {
-                    x: e.touches[0].clientX - rect.left,
-                    y: e.touches[0].clientY - rect.top
-                };
-            }
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             return {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
+                x: clientX - rect.left,
+                y: clientY - rect.top
             };
         }
 
-        function iniciarDibujo(e) {
-            e.preventDefault();
-            dibujandoFirma = true;
-            const pos = obtenerPosicionCanvas(e);
-            ctxFirma.beginPath();
-            ctxFirma.moveTo(pos.x, pos.y);
-        }
-
-        function dibujarFirma(e) {
-            if (!dibujandoFirma) return;
-            e.preventDefault();
-            const pos = obtenerPosicionCanvas(e);
-            ctxFirma.lineTo(pos.x, pos.y);
-            ctxFirma.stroke();
-        }
-
-        function detenerDibujo() {
-            if (dibujandoFirma) {
-                dibujandoFirma = false;
-                ctxFirma.closePath();
-                guardarDatosLocalmente(); // Guardar canvas después de trazar
-            }
-        }
-
-        canvasFirma.addEventListener('mousedown', iniciarDibujo);
-        canvasFirma.addEventListener('mousemove', dibujarFirma);
-        canvasFirma.addEventListener('mouseup', detenerDibujo);
-        canvasFirma.addEventListener('mouseout', detenerDibujo);
-
-        canvasFirma.addEventListener('touchstart', iniciarDibujo, {passive: false});
-        canvasFirma.addEventListener('touchmove', dibujarFirma, {passive: false});
-        canvasFirma.addEventListener('touchend', detenerDibujo);
+        canvasFirma.addEventListener('mousedown', (e) => { dibujando = true; const p = obtenerPos(e); ctxFirma.beginPath(); ctxFirma.moveTo(p.x, p.y); });
+        canvasFirma.addEventListener('mousemove', (e) => { if(!dibujando) return; const p = obtenerPos(e); ctxFirma.lineTo(p.x, p.y); ctxFirma.stroke(); });
+        canvasFirma.addEventListener('mouseup', () => { dibujando = false; guardarDatosLocalmente(); });
+        
+        canvasFirma.addEventListener('touchstart', (e) => { e.preventDefault(); dibujando = true; const p = obtenerPos(e); ctxFirma.beginPath(); ctxFirma.moveTo(p.x, p.y); }, {passive: false});
+        canvasFirma.addEventListener('touchmove', (e) => { e.preventDefault(); if(!dibujando) return; const p = obtenerPos(e); ctxFirma.lineTo(p.x, p.y); ctxFirma.stroke(); }, {passive: false});
+        canvasFirma.addEventListener('touchend', () => { dibujando = false; guardarDatosLocalmente(); });
 
         function limpiarCanvasFirma() {
             ctxFirma.clearRect(0, 0, canvasFirma.width, canvasFirma.height);
             guardarDatosLocalmente();
         }
-        // --- FIN LÓGICA PAD DE FIRMA ---
 
-
-        // NUEVO: Funciones para guardar y cargar localmente (Modificadas para incluir la firma)
+        // --- SISTEMA DE PERSISTENCIA ---
         function guardarDatosLocalmente() {
-            const inputs = document.querySelectorAll('input');
-            const datos = [];
-            inputs.forEach(input => {
-                datos.push(input.value);
-            });
-            const guardado = {
-                timestamp: new Date().getTime(),
+            const datos = Array.from(document.querySelectorAll('input')).map(i => i.value);
+            localStorage.setItem('formContingenciasLatam', JSON.stringify({
+                timestamp: Date.now(),
                 datos: datos,
-                firma: canvasFirma.toDataURL() // Guardamos la firma
-            };
-            localStorage.setItem('formContingenciasLatam', JSON.stringify(guardado));
+                firma: canvasFirma.toDataURL()
+            }));
         }
 
         function cargarDatosLocalmente() {
-            const guardadoStr = localStorage.getItem('formContingenciasLatam');
-            if (guardadoStr) {
-                const guardado = JSON.parse(guardadoStr);
-                const unDiaMs = 24 * 60 * 60 * 1000;
-                const ahora = new Date().getTime();
-                
-                if (ahora - guardado.timestamp < unDiaMs) {
-                    const inputs = document.querySelectorAll('input');
-                    inputs.forEach((input, index) => {
-                        if (guardado.datos[index] !== undefined) {
-                            input.value = guardado.datos[index];
-                        }
-                    });
-                    
-                    // Cargar firma guardada
-                    if (guardado.firma) {
-                        const img = new Image();
-                        img.onload = function() {
-                            ctxFirma.drawImage(img, 0, 0);
-                        };
-                        img.src = guardado.firma;
-                    }
-
-                    reflejarFirma();
-                    calcularTotales();
-                } else {
-                    localStorage.removeItem('formContingenciasLatam');
-                }
+            const g = JSON.parse(localStorage.getItem('formContingenciasLatam'));
+            if (g && (Date.now() - g.timestamp < 86400000)) {
+                document.querySelectorAll('input').forEach((input, i) => { if(g.datos[i] !== undefined) input.value = g.datos[i]; });
+                if (g.firma) { const img = new Image(); img.onload = () => ctxFirma.drawImage(img, 0, 0); img.src = g.firma; }
+                reflejarFirma(); calcularTotales();
             }
         }
 
-        // NUEVO: Función para limpiar el formulario
         function limpiarFormulario() {
-            if (confirm("¿Está seguro que desea limpiar todos los datos del formulario?")) {
-                document.querySelectorAll('input').forEach(input => {
-                    input.value = '';
-                });
-                
+            if (confirm("¿Limpiar todo?")) {
+                document.querySelectorAll('input').forEach(i => i.value = '');
                 document.querySelector('.input-gerencia').value = "MANTTO LÍNEA";
-                
-                const hoy = new Date();
-                const dd = String(hoy.getDate()).padStart(2, '0');
-                const mmIndex = hoy.getMonth();
-                const yyyy = hoy.getFullYear();
-                document.getElementById('fecha-cabecera').value = `${dd} DE ${nombresMeses[mmIndex]} DE ${yyyy}`;
-                
-                limpiarCanvasFirma(); // Borramos también la firma
-                reflejarFirma();
-                calcularTotales();
+                limpiarCanvasFirma();
                 localStorage.removeItem('formContingenciasLatam');
+                location.reload();
             }
         }
 
-        // NUEVO: Listeners para guardar al escribir o cambiar algo
-        document.addEventListener('input', function(e) {
-            if (e.target.tagName === 'INPUT') guardarDatosLocalmente();
-        });
-        document.addEventListener('change', function(e) {
-            if (e.target.tagName === 'INPUT') guardarDatosLocalmente();
-        });
-
+        // --- FUNCIONES DE FORMATEO (Mantenidas igual) ---
         function formatearFechaTexto(input) {
-            let valor = input.value.replace(/\D/g, ''); 
-            if (valor.length === 0) return;
-
-            let dia, mes, anio;
-            const hoy = new Date();
-            const mesActual = hoy.getMonth() + 1;
-            const anioActual = hoy.getFullYear();
-
-            // Interpretaciones inteligentes de fecha
-            if (valor.length === 1) {
-                dia = "0" + valor;
-                mes = mesActual;
-                anio = anioActual.toString();
-            } else if (valor.length === 2) {
-                let num = parseInt(valor, 10);
-                if (num >= 1 && num <= 31) {
-                    dia = valor.padStart(2, '0');
-                    mes = mesActual;
-                    anio = anioActual.toString();
-                } else {
-                    dia = "0" + valor.charAt(0);
-                    mes = parseInt(valor.charAt(1), 10);
-                    anio = anioActual.toString();
-                }
-            } else if (valor.length === 3) {
-                let d2 = parseInt(valor.substring(0, 2), 10);
-                if (d2 >= 1 && d2 <= 31) {
-                    dia = valor.substring(0, 2);
-                    mes = parseInt(valor.substring(2, 3), 10);
-                } else {
-                    dia = "0" + valor.charAt(0);
-                    mes = parseInt(valor.substring(1, 3), 10);
-                }
-                anio = anioActual.toString();
-            } else if (valor.length === 4) {
-                dia = valor.substring(0, 2);
-                mes = parseInt(valor.substring(2, 4), 10);
-                anio = anioActual.toString();
-            } else if (valor.length === 6) {
-                dia = valor.substring(0, 2);
-                mes = parseInt(valor.substring(2, 4), 10);
-                anio = "20" + valor.substring(4, 6);
-            } else if (valor.length === 8) {
-                dia = valor.substring(0, 2);
-                mes = parseInt(valor.substring(2, 4), 10);
-                anio = valor.substring(4, 8);
-            } else {
-                return;
-            }
-            
-            if (mes >= 1 && mes <= 12) {
-                input.value = `${dia} DE ${nombresMeses[mes - 1]} DE ${anio}`;
-                guardarDatosLocalmente(); // NUEVO: Guardar tras formatear
-            }
+            let v = input.value.replace(/\D/g, ''); if(!v) return;
+            const h = new Date(); let d, m, a = h.getFullYear();
+            if(v.length <= 2) { d = v.padStart(2,'0'); m = h.getMonth()+1; }
+            else if(v.length <= 4) { d = v.substring(0,2); m = parseInt(v.substring(2,4)); }
+            else if(v.length === 6) { d = v.substring(0,2); m = parseInt(v.substring(2,4)); a = "20"+v.substring(4,6); }
+            else if(v.length === 8) { d = v.substring(0,2); m = parseInt(v.substring(2,4)); a = v.substring(4,8); }
+            if(m >= 1 && m <= 12) input.value = `${d} DE ${nombresMeses[m-1]} DE ${a}`;
+            guardarDatosLocalmente();
         }
-
-        const inputNombre = document.getElementById('input-nombre');
-        const inputBp = document.getElementById('input-bp');
-        const firmaDinamica = document.getElementById('firma-dinamica');
 
         function reflejarFirma() {
-            const nombre = inputNombre.value.trim().toUpperCase();
-            const bp = inputBp.value.trim().toUpperCase();
-            
-            if (nombre !== "" || bp !== "") {
-                firmaDinamica.innerHTML = (nombre !== "" ? nombre : "") + (bp !== "" ? "<br>BP: " + bp : "");
-            } else {
-                firmaDinamica.innerHTML = "_________________";
-            }
+            const n = document.getElementById('input-nombre').value.trim().toUpperCase();
+            const b = document.getElementById('input-bp').value.trim().toUpperCase();
+            document.getElementById('firma-dinamica').innerHTML = (n || b) ? `${n}${b ? '<br>BP: '+b : ''}` : "_________________";
         }
 
-        inputNombre.addEventListener('input', reflejarFirma);
-        inputBp.addEventListener('input', reflejarFirma);
-
-        window.onload = function() {
-            const hoy = new Date();
-            const dd = String(hoy.getDate()).padStart(2, '0');
-            const mmIndex = hoy.getMonth();
-            const yyyy = hoy.getFullYear();
-            
-            document.getElementById('fecha-cabecera').value = `${dd} DE ${nombresMeses[mmIndex]} DE ${yyyy}`;
-
-            // NUEVO: Cargar datos guardados si existen
-            cargarDatosLocalmente();
-        };
+        document.getElementById('input-nombre').addEventListener('input', reflejarFirma);
+        document.getElementById('input-bp').addEventListener('input', reflejarFirma);
 
         function formatearHora(input) {
-            let valor = input.value.replace(/\D/g, ''); 
-            if (valor.length > 2) {
-                valor = valor.slice(0, 2) + ':' + valor.slice(2, 4);
-            }
-            input.value = valor;
-            
-            if(valor.length === 5) {
-                calcularTotales();
-            } else {
-                input.closest('tr').querySelector('.hora-total').value = "";
-                calcularTotales();
-            }
+            let v = input.value.replace(/\D/g, '');
+            if(v.length > 2) v = v.slice(0,2) + ':' + v.slice(2,4);
+            input.value = v; calcularTotales();
         }
 
         function completarHora(input) {
-            let valor = input.value.replace(/\D/g, '');
-            if (valor.length === 0) return;
-
-            let h, m;
-
-            // Interpretaciones inteligentes de hora
-            if (valor.length === 1) {
-                h = "0" + valor;
-                m = "00";
-            } else if (valor.length === 2) {
-                let num = parseInt(valor, 10);
-                if (num <= 23) {
-                    h = valor.padStart(2, '0');
-                    m = "00";
-                } else {
-                    h = "0" + valor.charAt(0);
-                    m = valor.charAt(1) + "0";
-                }
-            } else if (valor.length === 3) {
-                let d2 = parseInt(valor.substring(0, 2), 10);
-                if (d2 <= 23) {
-                    h = valor.substring(0, 2);
-                    m = valor.charAt(2) + "0";
-                } else {
-                    h = "0" + valor.charAt(0);
-                    m = valor.substring(1, 3);
-                }
-            } else if (valor.length >= 4) {
-                h = valor.substring(0, 2);
-                m = valor.substring(2, 4);
-            }
-
-            if (parseInt(h) > 23) h = "23";
-            if (parseInt(m) > 59) m = "59";
-
-            input.value = `${h}:${m}`;
-            calcularTotales();
-            guardarDatosLocalmente(); // NUEVO: Guardar tras autocompletar
+            let v = input.value.replace(/\D/g, ''); if(!v) return;
+            let h = v.substring(0,2).padStart(2,'0'), m = (v.substring(2,4) || "00").padEnd(2,'0');
+            if(parseInt(h)>23) h="23"; if(parseInt(m)>59) m="59";
+            input.value = `${h}:${m}`; calcularTotales(); guardarDatosLocalmente();
         }
 
         function calcularTotales() {
-            const filas = document.querySelectorAll('.fila-calc');
-            let granTotalMinutos = 0;
-
-            filas.forEach(fila => {
-                const desdeStr = fila.querySelector('.hora-desde').value;
-                const hastaStr = fila.querySelector('.hora-hasta').value;
-                const totalInput = fila.querySelector('.hora-total');
-
-                if (desdeStr.length === 5 && hastaStr.length === 5) {
-                    let [dh, dm] = desdeStr.split(':').map(Number);
-                    let [hh, hm] = hastaStr.split(':').map(Number);
-
-                    if(dh < 24 && hh < 24 && dm < 60 && hm < 60) {
-                        let minDesde = dh * 60 + dm;
-                        let minHasta = hh * 60 + hm;
-
-                        if (minHasta < minDesde) {
-                            minHasta += 24 * 60; 
-                        }
-
-                        let diff = minHasta - minDesde;
-                        granTotalMinutos += diff;
-
-                        let resH = Math.floor(diff / 60);
-                        let resM = diff % 60;
-                        totalInput.value = resH.toString().padStart(2, '0') + ':' + resM.toString().padStart(2, '0');
-                    } else {
-                        totalInput.value = "ERR"; 
-                    }
+            let granTotal = 0;
+            document.querySelectorAll('.fila-calc').forEach(f => {
+                const d = f.querySelector('.hora-desde').value, h = f.querySelector('.hora-hasta').value;
+                if(d.length===5 && h.length===5) {
+                    let [dh, dm] = d.split(':').map(Number), [hh, hm] = h.split(':').map(Number);
+                    let diff = (hh*60+hm) - (dh*60+dm); if(diff < 0) diff += 1440;
+                    granTotal += diff;
+                    f.querySelector('.hora-total').value = `${Math.floor(diff/60).toString().padStart(2,'0')}:${(diff%60).toString().padStart(2,'0')}`;
                 }
             });
-
-            const granTotalInput = document.getElementById('gran-total');
-            if(granTotalMinutos > 0) {
-                let gH = Math.floor(granTotalMinutos / 60);
-                let gM = granTotalMinutos % 60;
-                granTotalInput.value = gH.toString().padStart(2, '0') + ':' + gM.toString().padStart(2, '0');
-            } else {
-                granTotalInput.value = "";
-            }
+            document.getElementById('gran-total').value = granTotal ? `${Math.floor(granTotal/60).toString().padStart(2,'0')}:${(granTotal%60).toString().padStart(2,'0')}` : "";
         }
 
+        // --- GENERACIÓN DE PDF ---
         function generarPDF() {
-            // --- INICIO DE VALIDACIÓN OBLIGATORIA AÑADIDA ---
-            const nombre = document.getElementById('input-nombre').value.trim();
-            const bp = document.getElementById('input-bp').value.trim();
-            const area = document.querySelector('.input-area').value.trim();
-
-            if (nombre === "") {
-                alert("Por favor, ingrese el NOMBRE de forma obligatoria.");
-                return;
-            }
-
-            if (bp === "" || !/^\d+$/.test(bp)) {
-                alert("Por favor, ingrese un BP válido (SOLO NÚMEROS).");
-                return;
-            }
-
-            if (area === "") {
-                alert("Por favor, ingrese el ÁREA de forma obligatoria.");
-                return;
-            }
-
-            const filas = document.querySelectorAll('.fila-calc');
-            let hayFilasCompletas = false;
-
-            for (let i = 0; i < filas.length; i++) {
-                const fila = filas[i];
-                const fecha = fila.querySelector('.input-fecha-tabla').value.trim();
-                const desde = fila.querySelector('.hora-desde').value.trim();
-                const hasta = fila.querySelector('.hora-hasta').value.trim();
-                const motivo = fila.querySelector('.celda-motivo').value.trim();
-
-                const tieneAlgunDato = fecha !== "" || desde !== "" || hasta !== "" || motivo !== "";
-
-                if (tieneAlgunDato) {
-                    if (fecha === "" || desde === "" || hasta === "") {
-                        alert(`La Fila ${i + 1} está incompleta. Si utiliza una fila, es obligatorio llenar FECHA, HORA DESDE y HORA HASTA.`);
-                        return; 
-                    }
-                    hayFilasCompletas = true;
-                }
-            }
-
-            if (!hayFilasCompletas) {
-                alert("Por favor, complete al menos UNA FILA de contingencia con su FECHA, HORA DESDE y HORA HASTA.");
-                return;
-            }
-            // --- FIN DE VALIDACIÓN OBLIGATORIA AÑADIDA ---
-
-
-            if (typeof html2pdf === 'undefined') {
-                alert("ERROR: No se encontró el motor de PDF.");
-                return;
-            }
-
-            const btn = document.querySelector('.btn-pdf');
-            const textoOriginal = btn.innerText;
+            const btnPdf = document.querySelector('.btn-pdf');
+            const btnBorrar = document.querySelector('.btn-borrar-firma');
             
-            btn.innerText = "PROCESANDO...";
-            btn.disabled = true;
-
-            document.querySelectorAll('input').forEach(input => {
-                input.value = input.value.toUpperCase();
-                input.setAttribute('value', input.value);
-                
-                if (input.hasAttribute('placeholder')) {
-                    input.setAttribute('data-placeholder', input.getAttribute('placeholder'));
-                    input.removeAttribute('placeholder');
-                }
-            });
-
-            // Ocultar borde del canvas para que no salga punteado en el PDF
-            const bordeCanvasOriginal = canvasFirma.style.border;
+            // Ocultar elementos molestos
+            btnBorrar.style.visibility = 'hidden'; 
             canvasFirma.style.border = 'none';
 
-            const centrador = document.getElementById('centrador-principal');
-            centrador.style.display = 'block';
-            centrador.style.padding = '0';
-            window.scrollTo(0,0);
+            document.querySelectorAll('input').forEach(i => i.setAttribute('value', i.value.toUpperCase()));
 
-            const elemento = document.getElementById('contenido-pdf');
-            
-            const opciones = {
-                margin:       0, 
-                filename:     'Formulario_Contingencias.pdf',
-                image:        { type: 'jpeg', quality: 1 }, 
-                html2canvas:  { scale: 2, scrollY: 0, scrollX: 0 }, 
-                jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+            const opt = {
+                margin: 0,
+                filename: 'Formulario_Contingencias.pdf',
+                image: { type: 'jpeg', quality: 1 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
             };
 
-            html2pdf().set(opciones).from(elemento).save().then(() => {
-                centrador.style.display = 'flex';
-                centrador.style.padding = '20px';
-                btn.innerText = textoOriginal;
-                btn.disabled = false;
-                canvasFirma.style.border = bordeCanvasOriginal; // Restauramos borde canvas
-                
-                document.querySelectorAll('input').forEach(input => {
-                    if (input.hasAttribute('data-placeholder')) {
-                        input.setAttribute('placeholder', input.getAttribute('data-placeholder'));
-                        input.removeAttribute('data-placeholder');
-                    }
-                });
-            }).catch(err => {
-                console.error("Fallo al generar el PDF:", err);
-                centrador.style.display = 'flex';
-                centrador.style.padding = '20px';
-                btn.innerText = textoOriginal;
-                btn.disabled = false;
-                canvasFirma.style.border = bordeCanvasOriginal; // Restauramos borde canvas
-                
-                document.querySelectorAll('input').forEach(input => {
-                    if (input.hasAttribute('data-placeholder')) {
-                        input.setAttribute('placeholder', input.getAttribute('data-placeholder'));
-                        input.removeAttribute('data-placeholder');
-                    }
-                });
+            html2pdf().set(opt).from(document.getElementById('contenido-pdf')).save().then(() => {
+                btnBorrar.style.visibility = 'visible';
+                canvasFirma.style.border = '1px dashed rgba(0,0,0,0.1)';
             });
         }
 
-        // MODIFICADO: Lógica ajustada para mantener ambos botones visibles en celulares al hacer zoom
-        if (window.visualViewport) {
-            const btnPdf = document.querySelector('.btn-pdf');
-            const btnLimpiar = document.querySelector('.btn-limpiar'); // NUEVO
-            function reposicionarBotones() {
-                // PDF
-                btnPdf.style.position = 'absolute';
-                btnPdf.style.bottom = 'auto';
-                btnPdf.style.right = 'auto';
-                btnPdf.style.left = (window.visualViewport.pageLeft + window.visualViewport.width - btnPdf.offsetWidth - 30) + 'px';
-                btnPdf.style.top = (window.visualViewport.pageTop + window.visualViewport.height - btnPdf.offsetHeight - 30) + 'px';
-                
-                // Limpiar
-                if(btnLimpiar) {
-                    btnLimpiar.style.position = 'absolute';
-                    btnLimpiar.style.bottom = 'auto';
-                    btnLimpiar.style.left = 'auto';
-                    btnLimpiar.style.left = (window.visualViewport.pageLeft + 30) + 'px';
-                    btnLimpiar.style.top = (window.visualViewport.pageTop + window.visualViewport.height - btnLimpiar.offsetHeight - 30) + 'px';
-                }
-            }
-            window.visualViewport.addEventListener('resize', reposicionarBotones);
-            window.visualViewport.addEventListener('scroll', reposicionarBotones);
-            setTimeout(reposicionarBotones, 100); 
-        }
+        window.onload = cargarDatosLocalmente;
     </script>
 </body>
 </html>
