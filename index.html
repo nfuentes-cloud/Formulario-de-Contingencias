@@ -16,6 +16,7 @@
 
         #centrador-principal {
             display: flex;
+            flex-direction: column; /* Añadido para apilar botones encima del formulario */
             justify-content: center;
             align-items: center; 
             min-height: 100vh;
@@ -193,20 +194,12 @@
             line-height: 1.2;
         }
 
-        /* ----- NUEVO CONTENEDOR FLOTANTE PARA BOTONES PRINCIPALES ----- */
+        /* ----- CONTENEDOR DE BOTONES PRINCIPALES ----- */
         .contenedor-botones {
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
             display: flex;
             gap: 12px;
+            margin-bottom: 20px; /* Espacio entre los botones y el formulario */
             z-index: 1000;
-            opacity: 0.5; /* Semi-transparente para no molestar */
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-
-        .contenedor-botones:hover, .contenedor-botones:focus-within {
-            opacity: 1; /* Vuelve a ser 100% visible al pasar el mouse o tocar */
         }
 
         .btn-pdf, .btn-limpiar {
@@ -243,6 +236,12 @@
 <body>
 
     <div id="centrador-principal">
+        
+        <div class="contenedor-botones no-print">
+            <button class="btn-limpiar" onclick="limpiarFormulario()">Limpiar Formulario</button>
+            <button class="btn-pdf" onclick="generarPDF()">Descargar PDF</button>
+        </div>
+
         <div class="hoja-carta" id="contenido-pdf">
             
             <div class="header-logo">
@@ -354,11 +353,6 @@
         </div>
     </div>
 
-    <div class="contenedor-botones no-print">
-        <button class="btn-limpiar" onclick="limpiarFormulario()">Limpiar Formulario</button>
-        <button class="btn-pdf" onclick="generarPDF()">Descargar PDF</button>
-    </div>
-
     <script>
         const nombresMeses = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
 
@@ -404,7 +398,7 @@
             const pos = getFirmaPos(e);
             ctxFirma.lineTo(pos.x, pos.y);
             ctxFirma.strokeStyle = "#000033"; 
-            ctxFirma.lineWidth = 2.5;
+            ctxFirma.lineWidth = 1.2; /* MODIFICADO: Antes estaba en 2.5, ahora en 1.2 para una firma más delgada */
             ctxFirma.lineCap = "round";
             ctxFirma.lineJoin = "round";
             ctxFirma.stroke();
