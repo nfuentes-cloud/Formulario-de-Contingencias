@@ -119,7 +119,7 @@
         .seccion-firmas {
             display: flex;
             justify-content: space-between;
-            margin-top: 110px; /* MODIFICADO: Aumentado de 60px a 110px para dar más espacio a la firma */
+            margin-top: 110px; 
             padding: 0 20px;
         }
         
@@ -129,6 +129,57 @@
             align-items: center;
             width: 250px; 
         }
+
+        /* ESTILOS NUEVOS PARA LA FIRMA DIGITAL EN EL BLOQUE DEL MEDIO */
+        .bloque-firma.medio {
+            position: relative; /* Permite posicionar el canvas libremente encima */
+            z-index: 10;
+        }
+
+        #canvas-firma {
+            position: absolute;
+            top: -140px; /* Sube el canvas para que cubra todo el espacio superior */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            pointer-events: none; /* Inactivo por defecto para no tapar clics */
+            touch-action: none; /* Previene el scroll en celulares al dibujar */
+        }
+
+        #canvas-firma.activo {
+            pointer-events: auto; /* Permite dibujar */
+            background-color: rgba(200, 220, 255, 0.15); /* Fondo suave guiador */
+            border: 1px dashed #999;
+            border-radius: 8px;
+        }
+
+        .controles-firma {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+
+        .btn-firma {
+            background-color: #002d72;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            text-transform: none;
+        }
+
+        .btn-firma:hover { background-color: #001845; }
+        
+        .btn-borrar-firma {
+            background-color: #b30000;
+        }
+        .btn-borrar-firma:hover { background-color: #800000; }
+        /* FIN ESTILOS FIRMA DIGITAL */
 
         .firma-linea {
             border-top: 0.5px solid #000;
@@ -161,7 +212,6 @@
         .btn-pdf:hover { background-color: #001845; }
         .btn-pdf:disabled { background-color: #555; cursor: not-allowed; }
 
-        /* NUEVO: Estilos para el botón de limpiar */
         .btn-limpiar {
             position: fixed;
             bottom: 30px;
@@ -188,6 +238,8 @@
             input { border-bottom: 0.5px solid transparent !important; } 
             input.celda-tabla { background-color: transparent !important; }
             input::placeholder { color: transparent !important; }
+            /* Asegurar que el canvas sí se imprima en el PDF sin borde punteado */
+            #canvas-firma { border: none !important; background-color: transparent !important; }
         }
     </style>
 </head>
@@ -286,8 +338,17 @@
                     <div class="firma-linea">SUPERVISOR</div>
                 </div>
 
-                <div class="bloque-firma">
+                <div class="bloque-firma medio">
                     <div class="firma-linea" id="firma-dinamica">_________________</div>
+                    
+                    <!-- NUEVO CONTROLES DE FIRMA (invisibles al imprimir) -->
+                    <div class="controles-firma no-print">
+                        <button type="button" class="btn-firma" id="btn-activar-firma" onclick="toggleFirma()">Firmar</button>
+                        <button type="button" class="btn-firma btn-borrar-firma" onclick="limpiarFirmaPad()">Borrar Firma</button>
+                    </div>
+
+                    <!-- NUEVO PAD DE FIRMA (Dimensionado para ser libre y pisar lo que sea) -->
+                    <canvas id="canvas-firma" width="450" height="250"></canvas>
                 </div>
 
                 <div class="bloque-firma">
@@ -304,7 +365,89 @@
     <script>
         const nombresMeses = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
 
-        // NUEVO: Funciones para guardar y cargar localmente
+        // VARIABLES Y FUNCIONES PARA EL PAD DE FIRMA
+        const canvasFirma = document.getElementById('canvas-firma');
+        const ctxFirma = canvasFirma.getContext('2d');
+        let dibujandoFirma = false;
+
+        function getFirmaPos(e) {
+            const rect = canvasFirma.getBoundingClientRect();
+            let clienteX = e.clientX;
+            let clienteY = e.clientY;
+            
+            if (e.touches && e.touches.length > 0) {
+                clienteX = e.touches[0].clientX;
+                clienteY = e.touches[0].clientY;
+            }
+            
+            // Relación de escala para calcular la posición real sobre el canvas incluso si hay zoom
+            const scaleX = canvasFirma.width / rect.width;
+            const scaleY = canvasFirma.height / rect.height;
+
+            return {
+                x: (clienteX - rect.left) * scaleX,
+                y: (clienteY - rect.top) * scaleY
+            };
+        }
+
+        function iniciarDibujo(e) {
+            if (!canvasFirma.classList.contains('activo')) return;
+            e.preventDefault(); 
+            dibujandoFirma = true;
+            const pos = getFirmaPos(e);
+            ctxFirma.beginPath();
+            ctxFirma.moveTo(pos.x, pos.y);
+        }
+
+        function dibujar(e) {
+            if (!dibujandoFirma || !canvasFirma.classList.contains('activo')) return;
+            e.preventDefault(); 
+            const pos = getFirmaPos(e);
+            ctxFirma.lineTo(pos.x, pos.y);
+            ctxFirma.strokeStyle = "#000033"; 
+            ctxFirma.lineWidth = 2.5;
+            ctxFirma.lineCap = "round";
+            ctxFirma.lineJoin = "round";
+            ctxFirma.stroke();
+        }
+
+        function detenerDibujo() {
+            if (dibujandoFirma) {
+                dibujandoFirma = false;
+                ctxFirma.closePath();
+                guardarDatosLocalmente(); // Guarda la firma en LocalStorage tras cada trazo
+            }
+        }
+
+        // Listeners del mouse
+        canvasFirma.addEventListener('mousedown', iniciarDibujo);
+        canvasFirma.addEventListener('mousemove', dibujar);
+        canvasFirma.addEventListener('mouseup', detenerDibujo);
+        canvasFirma.addEventListener('mouseout', detenerDibujo);
+
+        // Listeners táctiles (celulares/tablets)
+        canvasFirma.addEventListener('touchstart', iniciarDibujo, {passive: false});
+        canvasFirma.addEventListener('touchmove', dibujar, {passive: false});
+        canvasFirma.addEventListener('touchend', detenerDibujo);
+
+        function toggleFirma() {
+            canvasFirma.classList.toggle('activo');
+            const btn = document.getElementById('btn-activar-firma');
+            if (canvasFirma.classList.contains('activo')) {
+                btn.innerText = "Terminar Firma";
+                btn.style.backgroundColor = "#28a745"; // Verde para indicar activo
+            } else {
+                btn.innerText = "Firmar";
+                btn.style.backgroundColor = "#002d72";
+            }
+        }
+
+        function limpiarFirmaPad() {
+            ctxFirma.clearRect(0, 0, canvasFirma.width, canvasFirma.height);
+            guardarDatosLocalmente();
+        }
+
+        // MODIFICADO: Funciones para guardar y cargar localmente, ahora incluye la Firma
         function guardarDatosLocalmente() {
             const inputs = document.querySelectorAll('input');
             const datos = [];
@@ -313,7 +456,8 @@
             });
             const guardado = {
                 timestamp: new Date().getTime(),
-                datos: datos
+                datos: datos,
+                firma: canvasFirma.toDataURL() // Guarda la imagen del canvas
             };
             localStorage.setItem('formContingenciasLatam', JSON.stringify(guardado));
         }
@@ -332,6 +476,16 @@
                             input.value = guardado.datos[index];
                         }
                     });
+                    
+                    // Restaurar la firma si existe
+                    if (guardado.firma) {
+                        const img = new Image();
+                        img.onload = function() {
+                            ctxFirma.drawImage(img, 0, 0);
+                        };
+                        img.src = guardado.firma;
+                    }
+
                     reflejarFirma();
                     calcularTotales();
                 } else {
@@ -340,7 +494,7 @@
             }
         }
 
-        // NUEVO: Función para limpiar el formulario
+        // MODIFICADO: Función para limpiar el formulario incluyendo la firma
         function limpiarFormulario() {
             if (confirm("¿Está seguro que desea limpiar todos los datos del formulario?")) {
                 document.querySelectorAll('input').forEach(input => {
@@ -355,13 +509,14 @@
                 const yyyy = hoy.getFullYear();
                 document.getElementById('fecha-cabecera').value = `${dd} DE ${nombresMeses[mmIndex]} DE ${yyyy}`;
                 
+                limpiarFirmaPad(); // Limpia el canvas
                 reflejarFirma();
                 calcularTotales();
                 localStorage.removeItem('formContingenciasLatam');
             }
         }
 
-        // NUEVO: Listeners para guardar al escribir o cambiar algo
+        // Listeners para guardar al escribir o cambiar algo
         document.addEventListener('input', function(e) {
             if (e.target.tagName === 'INPUT') guardarDatosLocalmente();
         });
@@ -422,7 +577,7 @@
             
             if (mes >= 1 && mes <= 12) {
                 input.value = `${dia} DE ${nombresMeses[mes - 1]} DE ${anio}`;
-                guardarDatosLocalmente(); // NUEVO: Guardar tras formatear
+                guardarDatosLocalmente();
             }
         }
 
@@ -452,7 +607,6 @@
             
             document.getElementById('fecha-cabecera').value = `${dd} DE ${nombresMeses[mmIndex]} DE ${yyyy}`;
 
-            // NUEVO: Cargar datos guardados si existen
             cargarDatosLocalmente();
         };
 
@@ -509,7 +663,7 @@
 
             input.value = `${h}:${m}`;
             calcularTotales();
-            guardarDatosLocalmente(); // NUEVO: Guardar tras autocompletar
+            guardarDatosLocalmente(); 
         }
 
         function calcularTotales() {
@@ -556,7 +710,6 @@
         }
 
         function generarPDF() {
-            // --- INICIO DE VALIDACIÓN OBLIGATORIA AÑADIDA ---
             const nombre = document.getElementById('input-nombre').value.trim();
             const bp = document.getElementById('input-bp').value.trim();
             const area = document.querySelector('.input-area').value.trim();
@@ -586,14 +739,12 @@
                 const hasta = fila.querySelector('.hora-hasta').value.trim();
                 const motivo = fila.querySelector('.celda-motivo').value.trim();
 
-                // Verificar si el usuario escribió al menos algo en esta fila
                 const tieneAlgunDato = fecha !== "" || desde !== "" || hasta !== "" || motivo !== "";
 
                 if (tieneAlgunDato) {
-                    // Si empezó a llenar la fila, es obligatorio que complete fecha, desde y hasta
                     if (fecha === "" || desde === "" || hasta === "") {
                         alert(`La Fila ${i + 1} está incompleta. Si utiliza una fila, es obligatorio llenar FECHA, HORA DESDE y HORA HASTA.`);
-                        return; // Se cancela la generación del PDF
+                        return; 
                     }
                     hayFilasCompletas = true;
                 }
@@ -603,12 +754,15 @@
                 alert("Por favor, complete al menos UNA FILA de contingencia con su FECHA, HORA DESDE y HORA HASTA.");
                 return;
             }
-            // --- FIN DE VALIDACIÓN OBLIGATORIA AÑADIDA ---
-
 
             if (typeof html2pdf === 'undefined') {
                 alert("ERROR: No se encontró el motor de PDF.");
                 return;
+            }
+
+            // MODIFICADO: Asegurarse de desactivar el borde de la firma antes de imprimir
+            if (canvasFirma.classList.contains('activo')) {
+                toggleFirma();
             }
 
             const btn = document.querySelector('.btn-pdf');
@@ -670,10 +824,9 @@
             });
         }
 
-        // MODIFICADO: Lógica ajustada para mantener ambos botones visibles en celulares al hacer zoom
         if (window.visualViewport) {
             const btnPdf = document.querySelector('.btn-pdf');
-            const btnLimpiar = document.querySelector('.btn-limpiar'); // NUEVO
+            const btnLimpiar = document.querySelector('.btn-limpiar'); 
             function reposicionarBotones() {
                 // PDF
                 btnPdf.style.position = 'absolute';
