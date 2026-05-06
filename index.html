@@ -285,12 +285,43 @@
 
         function formatearFechaTexto(input) {
             let valor = input.value.replace(/\D/g, ''); 
-            let dia, mes, anio;
+            if (valor.length === 0) return;
 
-            if (valor.length === 4) {
+            let dia, mes, anio;
+            const hoy = new Date();
+            const mesActual = hoy.getMonth() + 1;
+            const anioActual = hoy.getFullYear();
+
+            // Interpretaciones inteligentes de fecha
+            if (valor.length === 1) {
+                dia = "0" + valor;
+                mes = mesActual;
+                anio = anioActual.toString();
+            } else if (valor.length === 2) {
+                let num = parseInt(valor, 10);
+                if (num >= 1 && num <= 31) {
+                    dia = valor.padStart(2, '0');
+                    mes = mesActual;
+                    anio = anioActual.toString();
+                } else {
+                    dia = "0" + valor.charAt(0);
+                    mes = parseInt(valor.charAt(1), 10);
+                    anio = anioActual.toString();
+                }
+            } else if (valor.length === 3) {
+                let d2 = parseInt(valor.substring(0, 2), 10);
+                if (d2 >= 1 && d2 <= 31) {
+                    dia = valor.substring(0, 2);
+                    mes = parseInt(valor.substring(2, 3), 10);
+                } else {
+                    dia = "0" + valor.charAt(0);
+                    mes = parseInt(valor.substring(1, 3), 10);
+                }
+                anio = anioActual.toString();
+            } else if (valor.length === 4) {
                 dia = valor.substring(0, 2);
                 mes = parseInt(valor.substring(2, 4), 10);
-                anio = new Date().getFullYear().toString();
+                anio = anioActual.toString();
             } else if (valor.length === 6) {
                 dia = valor.substring(0, 2);
                 mes = parseInt(valor.substring(2, 4), 10);
@@ -352,10 +383,42 @@
 
         function completarHora(input) {
             let valor = input.value.replace(/\D/g, '');
-            if (valor.length > 0 && valor.length <= 2) {
-                input.value = valor.padStart(2, '0') + ':00';
-                calcularTotales();
+            if (valor.length === 0) return;
+
+            let h, m;
+
+            // Interpretaciones inteligentes de hora
+            if (valor.length === 1) {
+                h = "0" + valor;
+                m = "00";
+            } else if (valor.length === 2) {
+                let num = parseInt(valor, 10);
+                if (num <= 23) {
+                    h = valor.padStart(2, '0');
+                    m = "00";
+                } else {
+                    h = "0" + valor.charAt(0);
+                    m = valor.charAt(1) + "0";
+                }
+            } else if (valor.length === 3) {
+                let d2 = parseInt(valor.substring(0, 2), 10);
+                if (d2 <= 23) {
+                    h = valor.substring(0, 2);
+                    m = valor.charAt(2) + "0";
+                } else {
+                    h = "0" + valor.charAt(0);
+                    m = valor.substring(1, 3);
+                }
+            } else if (valor.length >= 4) {
+                h = valor.substring(0, 2);
+                m = valor.substring(2, 4);
             }
+
+            if (parseInt(h) > 23) h = "23";
+            if (parseInt(m) > 59) m = "59";
+
+            input.value = `${h}:${m}`;
+            calcularTotales();
         }
 
         function calcularTotales() {
