@@ -158,7 +158,6 @@
             gap: 10px;
             margin-top: 10px;
             justify-content: center;
-            /* MODIFICADO: Se añade z-index y position para que el canvas no tape los botones */
             position: relative; 
             z-index: 100;
         }
@@ -342,7 +341,7 @@
                 <div class="bloque-firma medio">
                     <div class="firma-linea" id="firma-dinamica">_________________</div>
                     
-                    <div class="controles-firma no-print">
+                    <div class="controles-firma no-print" id="caja-botones-firma">
                         <button type="button" class="btn-firma" id="btn-activar-firma" onclick="toggleFirma()">Firmar</button>
                         <button type="button" class="btn-firma btn-borrar-firma" onclick="limpiarFirmaPad()">Borrar Firma</button>
                     </div>
@@ -387,11 +386,9 @@
             };
         }
 
-        // MODIFICADO: Controles de firma ajustados para ignorar multitouch
         function iniciarDibujo(e) {
             if (!canvasFirma.classList.contains('activo')) return;
             e.preventDefault(); 
-            // Ignorar si se usan dos o más dedos
             if (e.touches && e.touches.length > 1) return;
             
             dibujandoFirma = true;
@@ -403,7 +400,6 @@
         function dibujar(e) {
             if (!dibujandoFirma || !canvasFirma.classList.contains('activo')) return;
             e.preventDefault(); 
-            // Ignorar si se usan dos o más dedos
             if (e.touches && e.touches.length > 1) return;
             
             const pos = getFirmaPos(e);
@@ -444,17 +440,14 @@
             }
         }
 
-        // NUEVO: Función para cerrar la firma al tocar cualquier otra parte
         function cerrarFirmaSiClicFuera(e) {
             if (canvasFirma.classList.contains('activo')) {
-                // Comprueba que el clic NO fue en el canvas y NO fue en la barra de botones de firma
                 if (e.target !== canvasFirma && !e.target.closest('.controles-firma')) {
                     toggleFirma();
                 }
             }
         }
         
-        // Listeners para detectar toques o clics fuera del canvas
         document.addEventListener('mousedown', cerrarFirmaSiClicFuera);
         document.addEventListener('touchstart', cerrarFirmaSiClicFuera, { passive: false });
 
@@ -780,6 +773,10 @@
             btn.innerText = "PROCESANDO...";
             btn.disabled = true;
 
+            // NUEVO: Ocultamos los botones de firma a la fuerza por JavaScript
+            const botonesFirma = document.getElementById('caja-botones-firma');
+            botonesFirma.style.display = 'none';
+
             document.querySelectorAll('input').forEach(input => {
                 input.value = input.value.toUpperCase();
                 input.setAttribute('value', input.value);
@@ -811,6 +808,9 @@
                 btn.innerText = textoOriginal;
                 btn.disabled = false;
                 
+                // Restaurar los botones de firma
+                botonesFirma.style.display = 'flex';
+                
                 document.querySelectorAll('input').forEach(input => {
                     if (input.hasAttribute('data-placeholder')) {
                         input.setAttribute('placeholder', input.getAttribute('data-placeholder'));
@@ -823,6 +823,9 @@
                 centrador.style.padding = '20px';
                 btn.innerText = textoOriginal;
                 btn.disabled = false;
+                
+                // Restaurar los botones de firma por si ocurre un error
+                botonesFirma.style.display = 'flex';
                 
                 document.querySelectorAll('input').forEach(input => {
                     if (input.hasAttribute('data-placeholder')) {
