@@ -161,6 +161,26 @@
         .btn-pdf:hover { background-color: #001845; }
         .btn-pdf:disabled { background-color: #555; cursor: not-allowed; }
 
+        /* NUEVO: Estilos para el botón de limpiar */
+        .btn-limpiar {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background-color: #b30000;
+            color: #fff;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            text-transform: none; 
+            transition: background 0.3s;
+            z-index: 1000; 
+        }
+        .btn-limpiar:hover { background-color: #800000; }
+
         @media print {
             body { background: none; }
             .hoja-carta { box-shadow: none; margin: 0; }
@@ -278,10 +298,76 @@
         </div>
     </div>
 
+    <button class="btn-limpiar no-print" onclick="limpiarFormulario()">Limpiar Formulario</button>
     <button class="btn-pdf no-print" onclick="generarPDF()">Descargar PDF (Carta)</button>
 
     <script>
         const nombresMeses = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+
+        // NUEVO: Funciones para guardar y cargar localmente
+        function guardarDatosLocalmente() {
+            const inputs = document.querySelectorAll('input');
+            const datos = [];
+            inputs.forEach(input => {
+                datos.push(input.value);
+            });
+            const guardado = {
+                timestamp: new Date().getTime(),
+                datos: datos
+            };
+            localStorage.setItem('formContingenciasLatam', JSON.stringify(guardado));
+        }
+
+        function cargarDatosLocalmente() {
+            const guardadoStr = localStorage.getItem('formContingenciasLatam');
+            if (guardadoStr) {
+                const guardado = JSON.parse(guardadoStr);
+                const unDiaMs = 24 * 60 * 60 * 1000;
+                const ahora = new Date().getTime();
+                
+                if (ahora - guardado.timestamp < unDiaMs) {
+                    const inputs = document.querySelectorAll('input');
+                    inputs.forEach((input, index) => {
+                        if (guardado.datos[index] !== undefined) {
+                            input.value = guardado.datos[index];
+                        }
+                    });
+                    reflejarFirma();
+                    calcularTotales();
+                } else {
+                    localStorage.removeItem('formContingenciasLatam');
+                }
+            }
+        }
+
+        // NUEVO: Función para limpiar el formulario
+        function limpiarFormulario() {
+            if (confirm("¿Está seguro que desea limpiar todos los datos del formulario?")) {
+                document.querySelectorAll('input').forEach(input => {
+                    input.value = '';
+                });
+                
+                document.querySelector('.input-gerencia').value = "MANTTO LÍNEA";
+                
+                const hoy = new Date();
+                const dd = String(hoy.getDate()).padStart(2, '0');
+                const mmIndex = hoy.getMonth();
+                const yyyy = hoy.getFullYear();
+                document.getElementById('fecha-cabecera').value = `${dd} DE ${nombresMeses[mmIndex]} DE ${yyyy}`;
+                
+                reflejarFirma();
+                calcularTotales();
+                localStorage.removeItem('formContingenciasLatam');
+            }
+        }
+
+        // NUEVO: Listeners para guardar al escribir o cambiar algo
+        document.addEventListener('input', function(e) {
+            if (e.target.tagName === 'INPUT') guardarDatosLocalmente();
+        });
+        document.addEventListener('change', function(e) {
+            if (e.target.tagName === 'INPUT') guardarDatosLocalmente();
+        });
 
         function formatearFechaTexto(input) {
             let valor = input.value.replace(/\D/g, ''); 
@@ -336,6 +422,7 @@
             
             if (mes >= 1 && mes <= 12) {
                 input.value = `${dia} DE ${nombresMeses[mes - 1]} DE ${anio}`;
+                guardarDatosLocalmente(); // NUEVO: Guardar tras formatear
             }
         }
 
@@ -364,6 +451,9 @@
             const yyyy = hoy.getFullYear();
             
             document.getElementById('fecha-cabecera').value = `${dd} DE ${nombresMeses[mmIndex]} DE ${yyyy}`;
+
+            // NUEVO: Cargar datos guardados si existen
+            cargarDatosLocalmente();
         };
 
         function formatearHora(input) {
@@ -419,6 +509,7 @@
 
             input.value = `${h}:${m}`;
             calcularTotales();
+            guardarDatosLocalmente(); // NUEVO: Guardar tras autocompletar
         }
 
         function calcularTotales() {
@@ -579,20 +670,30 @@
             });
         }
 
-        // MODIFICADO: Lógica añadida para mantener el botón visible en celulares al hacer zoom
+        // MODIFICADO: Lógica ajustada para mantener ambos botones visibles en celulares al hacer zoom
         if (window.visualViewport) {
             const btnPdf = document.querySelector('.btn-pdf');
-            function reposicionarBoton() {
-                // Se posiciona de forma absoluta dentro del documento basándose en el área visible actual
+            const btnLimpiar = document.querySelector('.btn-limpiar'); // NUEVO
+            function reposicionarBotones() {
+                // PDF
                 btnPdf.style.position = 'absolute';
                 btnPdf.style.bottom = 'auto';
                 btnPdf.style.right = 'auto';
                 btnPdf.style.left = (window.visualViewport.pageLeft + window.visualViewport.width - btnPdf.offsetWidth - 30) + 'px';
                 btnPdf.style.top = (window.visualViewport.pageTop + window.visualViewport.height - btnPdf.offsetHeight - 30) + 'px';
+                
+                // Limpiar
+                if(btnLimpiar) {
+                    btnLimpiar.style.position = 'absolute';
+                    btnLimpiar.style.bottom = 'auto';
+                    btnLimpiar.style.left = 'auto';
+                    btnLimpiar.style.left = (window.visualViewport.pageLeft + 30) + 'px';
+                    btnLimpiar.style.top = (window.visualViewport.pageTop + window.visualViewport.height - btnLimpiar.offsetHeight - 30) + 'px';
+                }
             }
-            window.visualViewport.addEventListener('resize', reposicionarBoton);
-            window.visualViewport.addEventListener('scroll', reposicionarBoton);
-            setTimeout(reposicionarBoton, 100); // Llamada inicial con leve retraso
+            window.visualViewport.addEventListener('resize', reposicionarBotones);
+            window.visualViewport.addEventListener('scroll', reposicionarBotones);
+            setTimeout(reposicionarBotones, 100); 
         }
     </script>
 </body>
