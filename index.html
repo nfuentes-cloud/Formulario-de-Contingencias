@@ -119,7 +119,7 @@
         .seccion-firmas {
             display: flex;
             justify-content: space-between;
-            margin-top: 60px;
+            margin-top: 110px; /* MODIFICADO: Aumentado de 60px a 110px para dar más espacio a la firma */
             padding: 0 20px;
         }
         
@@ -577,6 +577,22 @@
                     }
                 });
             });
+        }
+
+        // MODIFICADO: Lógica añadida para mantener el botón visible en celulares al hacer zoom
+        if (window.visualViewport) {
+            const btnPdf = document.querySelector('.btn-pdf');
+            function reposicionarBoton() {
+                // Se posiciona de forma absoluta dentro del documento basándose en el área visible actual
+                btnPdf.style.position = 'absolute';
+                btnPdf.style.bottom = 'auto';
+                btnPdf.style.right = 'auto';
+                btnPdf.style.left = (window.visualViewport.pageLeft + window.visualViewport.width - btnPdf.offsetWidth - 30) + 'px';
+                btnPdf.style.top = (window.visualViewport.pageTop + window.visualViewport.height - btnPdf.offsetHeight - 30) + 'px';
+            }
+            window.visualViewport.addEventListener('resize', reposicionarBoton);
+            window.visualViewport.addEventListener('scroll', reposicionarBoton);
+            setTimeout(reposicionarBoton, 100); // Llamada inicial con leve retraso
         }
     </script>
 </body>
